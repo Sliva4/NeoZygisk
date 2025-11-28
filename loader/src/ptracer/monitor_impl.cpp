@@ -38,30 +38,31 @@ void AppMonitor::set_tracing_state(TracingState state) { tracing_state_ = state;
 void AppMonitor::write_abi_status_section(std::string &status_text, const Status &daemon_status) {
     auto abi_name = this->zygote_.abi_name_;
     if (daemon_status.supported) {
-        status_text += "\tzygote";
+        status_text += "zygote_";
         status_text += abi_name;
-        status_text += ":";
+        status_text += "_status=";
         if (tracing_state_ != TRACING)
-            status_text += "\t❓ unknown";
+            status_text += "unknown";
         else if (daemon_status.zygote_injected)
-            status_text += "\t😋 injected";
+            status_text += "injected";
         else
-            status_text += "\t❌ not injected";
-        status_text += "\n\tdaemon";
+            status_text += "not_injected";
+        status_text += "\ndaemon_";
         status_text += abi_name;
-        status_text += ":";
+        status_text += "_status=";
         if (daemon_status.daemon_running) {
-            status_text += "\t😋 running";
+            status_text += "running";
             if (!daemon_status.daemon_info.empty()) {
                 status_text += "\n";
                 status_text += daemon_status.daemon_info;
             }
         } else {
-            status_text += "\t❌ crashed";
+            status_text += "crashed";
             if (!daemon_status.daemon_error_info.empty()) {
-                status_text += "(";
+                status_text += "\ndaemon_";
+                status_text += abi_name;
+                status_text += "_error=";
                 status_text += daemon_status.daemon_error_info;
-                status_text += ")";
             }
         }
     }
@@ -75,34 +76,33 @@ void AppMonitor::update_status() {
     }
 
     // Build the middle section of the status text.
-    std::string status_text = "\tmonitor: \t";
+    std::string status_text = "monitor_status=";
     switch (tracing_state_) {
     case TRACING:
-        status_text += "😋 tracing";
+        status_text += "tracing";
         break;
     case STOPPING:
         [[fallthrough]];
     case STOPPED:
-        status_text += "❌ stopped";
+        status_text += "stopped";
         break;
     case EXITING:
-        status_text += "❌ exited";
+        status_text += "exited";
         break;
     }
     if (tracing_state_ != TRACING && !monitor_stop_reason_.empty()) {
-        status_text += "(";
+        status_text += "\nmonitor_stop_reason=";
         status_text += monitor_stop_reason_;
-        status_text += ")";
     }
 
     // Build the full content in a single stringstream for clarity.
     std::stringstream ss;
-    ss << pre_section_ << "\n" << status_text << "\n\n";
+    ss << pre_section_ << "\n" << status_text << "\n";
 
     std::string abi_section;
     write_abi_status_section(abi_section, zygote_.get_status());
 
-    ss << abi_section << "\n\n" << post_section_;
+    ss << abi_section << "\n" << post_section_;
 
     std::string final_output = ss.str();
     fwrite(final_output.c_str(), 1, final_output.length(), prop_file.get());
@@ -123,7 +123,6 @@ bool AppMonitor::prepare_environment() {
             post = true;
             post_section_ += line.substr(sizeof("description"));
         } else {
-            (post ? post_section_ : pre_section_) += "\t";
             (post ? post_section_ : pre_section_) += line;
         }
         return true;
