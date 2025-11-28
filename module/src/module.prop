@@ -3,5 +3,4 @@ name=${moduleName}
 version=${versionName}
 versionCode=${versionCode}
 author=JingMatrix
-description=Zygote injection with ptrace.
-updateJson=${updateJson}
+description=Zygote injection with ptrace. Based on NeoZygisk.
